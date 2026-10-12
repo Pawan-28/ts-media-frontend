@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 import { listArticles, listCategories, listIndustries, listSubcategoriesByCategory } from "@/lib/api/client";
 import { SITE_URL, articlePath, categoryPath, industryPath, subcategoryPath } from "@/lib/seo";
 
+// Generated per request (data is cached 60s by the API client), not at build time: the sitemap
+// needs the live API, and `npm run build` on the host must not fail when the API is briefly unreachable.
+export const dynamic = "force-dynamic";
+
 // DRF paginates 20/page by default (config.settings REST_FRAMEWORK
 // PAGE_SIZE) - walk every page so the sitemap enumerates every published
 // article, not just the first 20.

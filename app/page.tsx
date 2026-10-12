@@ -1,17 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  getBreakingArticle,
+  getActiveVideo,
   getLatestArticles,
   getFeaturedStories,
   listArticles,
   listCategories,
 } from "@/lib/api/client";
 import BreakingNewsBanner from "@/components/BreakingNewsBanner";
+import AdSlot from "@/components/AdSlot";
+import FloatingVideo from "@/components/FloatingVideo";
 import ArticleCard from "@/components/ArticleCard";
 import CategoryTag from "@/components/CategoryTag";
 import { formatDate } from "@/lib/format";
-import type { Article } from "@/lib/types";
+import { normalizeBunnyUrl } from "@/lib/bunnyUrl";
+import type { Article, Video } from "@/lib/types";
 
 export const revalidate = 60;
 
@@ -19,11 +22,11 @@ const CATEGORY_SECTIONS_MAX = 3;
 const CATEGORY_SECTION_SIZE = 4;
 
 export default async function HomePage() {
-  const [breaking, latest, featured, categories] = await Promise.all([
-    getBreakingArticle(),
+  const [latest, featured, categories, video] = await Promise.all([
     getLatestArticles(10),
     getFeaturedStories(4),
     listCategories(),
+    getActiveVideo(),
   ]);
 
   const activeCategories = categories.filter((c) => c.is_active);
@@ -58,80 +61,110 @@ export default async function HomePage() {
 
   return (
     <div>
-      {breaking && <BreakingNewsBanner article={breaking} />}
+      <BreakingNewsBanner articles={latest.slice(0, 6)} />
 
-      <div className="container-page section-stack py-8 sm:py-10">
-        {hero && (
-          <section aria-labelledby="top-stories-heading">
-            <h2 id="top-stories-heading" className="sr-only">
-              Top stories
-            </h2>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <HeroStory article={hero} />
-              {secondary.length > 0 && (
-                <div className="flex flex-col gap-5 lg:col-span-1">
-                  {secondary.map((article) => (
-                    <SecondaryStory key={article.id} article={article} />
+      <div className="container-page py-8 sm:py-10">
+        {/*
+          HOME_SIDEBAR fix: this is a real left-hand sidebar column now,
+          not a full-width banner - the earlier version rendered
+          HOME_SIDEBAR as just another centered section in the main
+          content flow, which is why a "Home - Sidebar" campaign never
+          actually showed up on the side of the page (reported by the
+          user after publishing one). `lg:grid-cols-[280px_minmax(0,1fr)]`
+          gives the sidebar a fixed-ish column and the main content the
+          rest; `order-2 lg:order-1` on the aside keeps the page's real
+          content first on a stacked mobile layout (an ad pushed above
+          every story would be bad mobile UX) while still placing it
+          genuinely on the left on desktop/tablet. `lg:sticky` keeps the
+          ad in view while the (much taller) main column scrolls, same
+          convention as most sidebar ad placements.
+        */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="order-2 lg:order-1 lg:sticky lg:top-24 lg:self-start h-[600px]">
+            <AdSlot placement="HOME_SIDEBAR" />
+          </aside>
+
+          <div className="order-1 min-w-0 lg:order-2 section-stack">
+            {/* <AdSlot placement="HOME_TOP" /> */}
+
+            {hero && (
+              <section aria-labelledby="top-stories-heading">
+                <h2 id="top-stories-heading" className="sr-only">
+                  Top stories
+                </h2>
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                  <HeroStory article={hero} video={video} />
+                  {secondary.length > 0 && (
+                    <div className="flex flex-col gap-5 lg:col-span-1">
+                      {secondary.map((article) => (
+                        <SecondaryStory key={article.id} article={article} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <AdSlot placement="HOME_MIDDLE" />
+
+            <section>
+              <div className="mb-6 flex items-baseline justify-between gap-4">
+                <h2 className="section-heading">Latest News</h2>
+                <Link href="/search" className="text-sm font-semibold text-accent-600 hover:text-accent-700">
+                  View all
+                </Link>
+              </div>
+              {latestRail.length === 0 ? (
+                <p className="empty-state">No published articles yet. Check back soon.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {latestRail.map((article) => (
+                    <ArticleCard key={article.id} article={article} />
                   ))}
                 </div>
               )}
-            </div>
-          </section>
-        )}
+            </section>
 
-        <section>
-          <div className="mb-6 flex items-baseline justify-between gap-4">
-            <h2 className="section-heading">Latest News</h2>
-            <Link href="/search" className="text-sm font-semibold text-accent-600 hover:text-accent-700">
-              View all
-            </Link>
+            {categorySections.map(({ category, articles }) => (
+              <section key={category.slug} className="border-t border-border-200 pt-8">
+                <div className="mb-6 flex items-baseline justify-between gap-4">
+                  <h2 className="section-heading">{category.name}</h2>
+                  <Link
+                    href={`/category/${category.slug}`}
+                    className="text-sm font-semibold text-accent-600 hover:text-accent-700"
+                  >
+                    More {category.name}
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {articles.map((article) => (
+                    <ArticleCard key={article.id} article={article} />
+                  ))}
+                </div>
+              </section>
+            ))}
+
+            {activeCategories.length > 0 && (
+              <section className="border-t border-border-200 pt-8">
+                <h2 className="mb-4 text-lg font-bold text-text-900">Browse by category</h2>
+                <div className="flex flex-wrap gap-2">
+                  {activeCategories.map((category) => (
+                    <CategoryTag key={category.slug} name={category.name} slug={category.slug} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Last thing in the main column, right before the site footer (rendered by the root layout). */}
+            <AdSlot placement="HOME_BOTTOM" />
           </div>
-          {latestRail.length === 0 ? (
-            <p className="empty-state">No published articles yet. Check back soon.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {latestRail.map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {categorySections.map(({ category, articles }) => (
-          <section key={category.slug} className="border-t border-border-200 pt-8">
-            <div className="mb-6 flex items-baseline justify-between gap-4">
-              <h2 className="section-heading">{category.name}</h2>
-              <Link
-                href={`/category/${category.slug}`}
-                className="text-sm font-semibold text-accent-600 hover:text-accent-700"
-              >
-                More {category.name}
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {articles.map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
-            </div>
-          </section>
-        ))}
-
-        {activeCategories.length > 0 && (
-          <section className="border-t border-border-200 pt-8">
-            <h2 className="mb-4 text-lg font-bold text-text-900">Browse by category</h2>
-            <div className="flex flex-wrap gap-2">
-              {activeCategories.map((category) => (
-                <CategoryTag key={category.slug} name={category.name} slug={category.slug} />
-              ))}
-            </div>
-          </section>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-function HeroStory({ article }: { article: Article }) {
+function HeroStory({ article, video }: { article: Article; video: Video | null }) {
   // NOTE: this card intentionally uses two separate <Link>s (image, then
   // headline+excerpt) instead of one <Link> wrapping the whole card. The
   // card also renders <CategoryTag>, which is itself a <Link> - nesting
@@ -145,31 +178,34 @@ function HeroStory({ article }: { article: Article }) {
   // no nested anchors.
   return (
     <article className="group lg:col-span-2">
-      <Link href={`/articles/${article.slug}`} className="block">
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md bg-surface-50">
-          {article.featured_image_url ? (
-            <Image
-              src={article.featured_image_url}
-              alt={article.title}
-              fill
-              priority
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 66vw"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm text-text-400">
-              No image
-            </div>
-          )}
-        </div>
-      </Link>
+      <div className="relative">
+        <Link href={`/articles/${article.slug}`} className="block">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md bg-surface-50">
+            {article.featured_image_url ? (
+              <Image
+                src={normalizeBunnyUrl(article.featured_image_url)}
+                alt={article.title}
+                fill
+                priority
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 66vw"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-sm text-text-400">
+                No image
+              </div>
+            )}
+          </div>
+        </Link>
+        {video && <FloatingVideo url={video.url} title={video.title} />}
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {/* article.category is only null for an article still awaiting a
             subcategory decision - see Article.effective_category. */}
         {article.category && <CategoryTag name={article.category.name} slug={article.category.slug} />}
       </div>
       <Link href={`/articles/${article.slug}`} className="block">
-        <h1 className="headline-xl mt-3 text-text-900 group-hover:text-accent-600">
+        <h1 className="headline-xl mt-3 !text-xl sm:!text-2xl lg:!text-3xl text-text-900 group-hover:text-accent-600">
           {article.title}
         </h1>
         {article.excerpt && (
@@ -193,7 +229,7 @@ function SecondaryStory({ article }: { article: Article }) {
       <Link href={`/articles/${article.slug}`} className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-md bg-surface-50 sm:w-28">
         {article.featured_image_url ? (
           <Image
-            src={article.featured_image_url}
+            src={normalizeBunnyUrl(article.featured_image_url)}
             alt={article.title}
             fill
             className="object-cover"

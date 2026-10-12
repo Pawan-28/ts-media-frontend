@@ -1,4 +1,4 @@
-import type { Article, Category, Industry, PaginatedResponse, Subcategory, SubscriptionPlan } from "@/lib/types";
+import type { Advertisement, Article, ArticleComment, Video, Category, Industry, PaginatedResponse, Subcategory, SubscriptionPlan } from "@/lib/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
@@ -68,6 +68,8 @@ export interface ListArticlesParams {
   categorySlug?: string;
   subcategorySlug?: string;
   ordering?: "-published_at" | "published_at" | "-created_at" | "created_at";
+  /** YYYY-MM-DD: only articles published on that calendar day (used by the e-paper edition). */
+  publishedDate?: string;
   page?: number;
   pageSize?: number;
 }
@@ -80,11 +82,23 @@ export async function listArticles(
   else if (params.categorySlug) search.set("category", params.categorySlug);
   else if (params.industrySlug) search.set("industry", params.industrySlug);
   search.set("ordering", params.ordering ?? "-published_at");
+  if (params.publishedDate) search.set("published_date", params.publishedDate);
   if (params.page) search.set("page", String(params.page));
   if (params.pageSize) search.set("page_size", String(params.pageSize));
 
   const qs = search.toString();
   return apiFetch<PaginatedResponse<Article>>(`/articles/${qs ? `?${qs}` : ""}`);
+}
+
+/** Every article published on one day (YYYY-MM-DD), following pagination up to maxPages. */
+export async function listArticlesForDate(date: string, maxPages = 5): Promise<Article[]> {
+  const all: Article[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await listArticles({ publishedDate: date, ordering: "-published_at", page });
+    all.push(...res.results);
+    if (!res.next) break;
+  }
+  return all;
 }
 
 /**
@@ -146,6 +160,17 @@ export async function getRelatedArticles(articleSlug: string, limit = 4): Promis
   return apiFetch<Article[]>(`/articles/${encodeURIComponent(articleSlug)}/related/?limit=${limit}`);
 }
 
+/** First page of reader comments for an article (always fresh - never from the shared ISR cache). */
+export async function listComments(slug: string): Promise<PaginatedResponse<ArticleComment>> {
+  const empty: PaginatedResponse<ArticleComment> = { count: 0, next: null, previous: null, results: [] };
+  try {
+    const res = await fetch(`${API_BASE_URL}/articles/${encodeURIComponent(slug)}/comments/`, { cache: "no-store" });
+    return res.ok ? ((await res.json()) as PaginatedResponse<ArticleComment>) : empty;
+  } catch {
+    return empty;
+  }
+}
+
 export async function listIndustries(): Promise<Industry[]> {
   const page = await apiFetch<PaginatedResponse<Industry> | Industry[]>(`/industries/`);
   return Array.isArray(page) ? page : page.results;
@@ -173,6 +198,12 @@ export async function listCategoriesByIndustry(industrySlug: string): Promise<Ca
   const page = await apiFetch<PaginatedResponse<Category> | Category[]>(
     `/categories/?industry=${encodeURIComponent(industrySlug)}`
   );
+  return Array.isArray(page) ? page : page.results;
+}
+
+/** Every active subcategory (each carries its parent category), for the navbar tree. */
+export async function listSubcategories(): Promise<Subcategory[]> {
+  const page = await apiFetch<PaginatedResponse<Subcategory> | Subcategory[]>(`/subcategories/`);
   return Array.isArray(page) ? page : page.results;
 }
 
@@ -251,6 +282,34 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
       `/subscriptions/plans/`
     );
     return Array.isArray(page) ? page : page.results;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Phase 11: public, currently-active advertisements for one placement
+ * (GET /api/advertisements/active/?placement=... - AllowAny on the
+ * Django side, see apps.advertisements.views.AdvertisementViewSet.active).
+ * Called directly against Django, same as getSubscriptionPlans() above.
+ * Degrades to an empty list on any failure - an ad slot is decoration,
+ * never something that should be able to break a page render, and "no
+ * active ads" is rendered as nothing (no placeholder ad), per the
+ * explicit requirement.
+ */
+/** The newest enabled promoted video (floated on the home hero), or null. */
+export async function getActiveVideo(): Promise<Video | null> {
+  try {
+    const rows = await apiFetch<Video[]>(`/videos/active/`);
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getActiveAdvertisements(placement: Advertisement["placement"]): Promise<Advertisement[]> {
+  try {
+    return await apiFetch<Advertisement[]>(`/advertisements/active/?placement=${encodeURIComponent(placement)}`);
   } catch {
     return [];
   }
