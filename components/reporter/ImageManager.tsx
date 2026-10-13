@@ -75,13 +75,9 @@ export default function ImageManager({
       .finally(() => setLoading(false));
   }, [slug, basePath]);
 
-  async function handleUpload(e: React.FormEvent) {
-    e.preventDefault();
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      setError("Choose an image file first.");
-      return;
-    }
+  // Uploads as soon as a file is chosen (no separate Upload button). Alt text / caption typed BEFORE choosing the
+  // file are sent along; they can also be edited afterwards on the uploaded image.
+  async function uploadChosenFile(file: File) {
     setError(null);
     setUploading(true);
     try {
@@ -94,6 +90,8 @@ export default function ImageManager({
       setUploading(false);
       if (!result.ok || !result.data) {
         setError(result.error || "Failed to upload image. Please try again.");
+        // clear the chooser so the same file can be picked again (onChange would not fire for an unchanged value)
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
       setImages((prev) => {
@@ -106,6 +104,7 @@ export default function ImageManager({
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setError("An unexpected error occurred while uploading the image.");
       console.error("Image upload error:", err);
     }
@@ -200,7 +199,17 @@ export default function ImageManager({
           {images.map((image) => (
             <div key={image.id} className="card overflow-hidden">
               <div className="relative aspect-video w-full bg-surface-50">
-                <Image src={normalizeBunnyUrl(image.bunny_url)} alt={image.alt_text || ""} fill className="object-cover" sizes="320px" />
+                {/* unoptimized: these are small editor previews, and an image whose stored address has a wrong/unknown host
+                    (e.g. a typo in BUNNY_PULL_ZONE_URL at upload time) must show a broken thumbnail - with Delete/Replace
+                    still usable - instead of crashing the whole editor page with next/image's "unconfigured host" error. */}
+                <Image
+                  src={normalizeBunnyUrl(image.bunny_url)}
+                  alt={image.alt_text || ""}
+                  fill
+                  className="object-cover"
+                  sizes="320px"
+                  unoptimized
+                />
                 {image.is_featured && (
                   <span className="badge absolute left-2 top-2 bg-accent-600 text-white">Featured</span>
                 )}
@@ -272,11 +281,7 @@ export default function ImageManager({
         <p className="text-sm text-text-400">No images uploaded yet.</p>
       )}
 
-      <form onSubmit={handleUpload} className="flex flex-col gap-3 rounded-md border border-border-200 p-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="field-label text-sm">Upload an image</span>
-          <input ref={fileInputRef} type="file" accept="image/*" className="field-input" />
-        </label>
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3 rounded-md border border-border-200 p-4">
         <label className="flex flex-col gap-1.5">
           <span className="field-label text-sm">Alt text</span>
           <input
@@ -302,9 +307,23 @@ export default function ImageManager({
             Set as featured image
           </label>
         )}
-        {/* <button type="submit" disabled={uploading} className="btn-secondary self-start">
-          {uploading ? "Uploading..." : "Uploadss image"}
-        </button> */}
+        <label className="flex flex-col gap-1.5">
+          <span className="field-label text-sm">Upload an image</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="field-input"
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void uploadChosenFile(file);
+            }}
+          />
+          <span className="text-xs text-text-400">
+            {uploading ? "Uploading..." : "The image uploads as soon as you choose a file."}
+          </span>
+        </label>
       </form>
     </div>
   );

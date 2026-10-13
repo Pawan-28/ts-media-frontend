@@ -126,8 +126,20 @@ export default function AdminArticleEditor({
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
+  // Shown when the category list could not be loaded (API down, or the backend's CORS_ALLOWED_ORIGINS does not
+  // include this site's address) - otherwise the dropdown just looks empty with no explanation.
+  const [categoriesError, setCategoriesError] = useState(false);
+
   useEffect(() => {
-    fetchActiveCategories().then(setCategories).catch(() => setCategories([]));
+    fetchActiveCategories()
+      .then((list) => {
+        setCategories(list);
+        setCategoriesError(false);
+      })
+      .catch(() => {
+        setCategories([]);
+        setCategoriesError(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -525,6 +537,12 @@ export default function AdminArticleEditor({
                 </option>
               ))}
             </select>
+            {categoriesError && (
+              <p role="alert" className="text-xs text-error-600">
+                Could not load categories from the API. Check that the backend is running and that its
+                CORS_ALLOWED_ORIGINS includes this site&apos;s address, then reload.
+              </p>
+            )}
             {categoryLocked && (
               <button
                 type="button"
