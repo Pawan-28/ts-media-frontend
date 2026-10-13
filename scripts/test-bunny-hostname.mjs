@@ -46,12 +46,15 @@ const remotePatterns = nextConfig.images.remotePatterns;
 assert.ok(remotePatterns && remotePatterns.length > 0, "next.config.js must define images.remotePatterns");
 const bunnyPattern = remotePatterns[0];
 
-const MIXED_CASE_URL = "https://Truth-Social-images-CDN.b-cdn.net/articles/2026/09/abc123-cover.jpg";
-const LOWERCASE_URL = "https://truth-social-images-cdn.b-cdn.net/articles/2026/09/abc123-cover.jpg";
-const CANONICAL_HOSTNAME = "truth-social-images-cdn.b-cdn.net";
+// The one configured host (NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST).
+const CANONICAL_HOSTNAME = bunnyPattern.hostname;
+const MIXED_CASE_HOST = [...CANONICAL_HOSTNAME].map((c, i) => (i % 2 ? c.toUpperCase() : c)).join("");
+const MIXED_CASE_URL = `https://${MIXED_CASE_HOST}/articles/2026/09/abc123-cover.jpg`;
+const LOWERCASE_URL = `https://${CANONICAL_HOSTNAME}/articles/2026/09/abc123-cover.jpg`;
 
 test("next.config.js remotePatterns hostname is the canonical lowercase Bunny host", () => {
-  assert.equal(bunnyPattern.hostname, CANONICAL_HOSTNAME);
+  const configured = (process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST || "placeholder-zone.b-cdn.net").trim().toLowerCase();
+  assert.equal(bunnyPattern.hostname, configured);
   assert.equal(bunnyPattern.hostname, bunnyPattern.hostname.toLowerCase(), "configured hostname must be lowercase");
 });
 
@@ -92,4 +95,73 @@ test("normalizeBunnyUrl canonicalizes the hostname consistently, path untouched"
 test("untrusted external image hosts are still rejected", () => {
   const url = new URL("https://evil.example.com/articles/2026/09/abc123-cover.jpg");
   assert.equal(matchRemotePattern(bunnyPattern, url), false);
+});
+
+// ---------------------------------------------------------------------------
+// Legacy pull-zone hosts: rows saved while an older Bunny pull zone was active
+// keep that zone's host in their stored URL. normalizeBunnyUrl must rewrite the
+// HOSTNAME to the canonical configured host (so /_next/image accepts it) while
+// preserving the path, filename and query - and must never touch other hosts.
+// ---------------------------------------------------------------------------
+
+const NEW_HOST = "truth-social-media.b-cdn.net";
+const OLD_HOST = "truth-social-images-cdn.b-cdn.net";
+
+/** Runs fn with NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST temporarily set (undefined = unset), then restores it. */
+function withBunnyEnv(value, fn) {
+  const previous = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST;
+  if (value === undefined) delete process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST;
+  else process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST = value;
+  try {
+    return fn();
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST;
+    else process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST = previous;
+  }
+}
+
+test("old-host Bunny URL is rewritten to the canonical host; path and filename are preserved", () => {
+  const old = `https://${OLD_HOST}/articles/haaland-workload-raises-concerns/3b70928b94d44ed09fb4d0fbc3bf9434.jpg`;
+  withBunnyEnv(NEW_HOST, () => {
+    assert.equal(
+      normalizeBunnyUrl(old),
+      `https://${NEW_HOST}/articles/haaland-workload-raises-concerns/3b70928b94d44ed09fb4d0fbc3bf9434.jpg`
+    );
+  });
+});
+
+test("mixed-case old host is rewritten too, and the query string is kept", () => {
+  withBunnyEnv(NEW_HOST, () => {
+    assert.equal(
+      normalizeBunnyUrl("https://Truth-Social-Images-CDN.b-cdn.net/articles/a/b.jpg?v=2#x"),
+      `https://${NEW_HOST}/articles/a/b.jpg?v=2#x`
+    );
+  });
+});
+
+test("a URL already on the new host is left unchanged", () => {
+  const url = `https://${NEW_HOST}/articles/ai/47685be7391e41508d3fe1cb85477453.jpg`;
+  withBunnyEnv(NEW_HOST, () => assert.equal(normalizeBunnyUrl(url), url));
+});
+
+test("a rewritten old-host URL is accepted by next/image remotePatterns (no HTTP 400 from /_next/image)", () => {
+  const pattern = { protocol: "https", hostname: NEW_HOST };
+  const old = `https://${OLD_HOST}/articles/x/y.jpg`;
+  assert.equal(matchRemotePattern(pattern, new URL(old)), false, "the raw old-host URL is what the optimizer rejects");
+  withBunnyEnv(NEW_HOST, () => {
+    assert.equal(matchRemotePattern(pattern, new URL(normalizeBunnyUrl(old))), true);
+  });
+});
+
+test("non-Bunny hosts are never rewritten", () => {
+  withBunnyEnv(NEW_HOST, () => {
+    assert.equal(normalizeBunnyUrl("https://evil.example.com/a.jpg"), "https://evil.example.com/a.jpg");
+    assert.equal(normalizeBunnyUrl("https://b-cdn.net.evil.com/a.jpg"), "https://b-cdn.net.evil.com/a.jpg");
+  });
+});
+
+test("nothing is rewritten when no Bunny host is configured (only the hostname case is normalized)", () => {
+  withBunnyEnv(undefined, () => {
+    assert.equal(normalizeBunnyUrl(`https://${OLD_HOST}/a.jpg`), `https://${OLD_HOST}/a.jpg`);
+  });
 });

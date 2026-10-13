@@ -18,7 +18,7 @@
  */
 const bunnyHost = (
   process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_HOST || "placeholder-zone.b-cdn.net"
-).toLowerCase();
+).trim().toLowerCase();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
