@@ -19,9 +19,9 @@ export default function Footer() {
             <p className="text-xl font-black tracking-tight text-text-900">
               Truth <span className="text-accent-600">And</span> Social
             </p>
-            <p className="mx-auto mt-2 max-w-md text-sm text-text-600">
+            {/* <p className="mx-auto mt-2 max-w-md text-sm text-text-600">
               Independent reporting on business, technology, sports and entertainment.
-            </p>
+            </p> */}
           </div>
 
           <SocialLinks className="justify-center" />
