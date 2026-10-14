@@ -3,8 +3,8 @@
  * {"detail": "..."} for a PermissionDenied/AuthenticationFailed, a
  * {"field": ["msg"]} or {"field": "msg"} dict for a ValidationError (one
  * entry per invalid field, e.g. {"reason": ["This field is required."]}
- * from request-changes/reject, or {"subcategory_slug": ["..."]} from the
- * reporter-category-assignment check), or {"non_field_errors": [...]}
+ * from request-changes/reject, or {"subcategory_slug": ["..."]} from an
+ * invalid subcategory choice), or {"non_field_errors": [...]}
  * for a validate()-level error. This flattens any of those into one
  * human-readable string for a form's error banner, instead of every
  * caller re-deriving its own guess at the shape.

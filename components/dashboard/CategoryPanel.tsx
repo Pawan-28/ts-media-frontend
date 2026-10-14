@@ -28,8 +28,8 @@ const emptyDraft = (defaultIndustrySlug: string): DraftState => ({
  * fallback remains supported" applies here too.
  *
  * Same "no separate Delete" reasoning as IndustryPanel: DELETE
- * soft-deactivates a Category too (Subcategories/Articles/
- * ReporterCategoryAssignments FK to it with on_delete=PROTECT).
+ * soft-deactivates a Category too (Subcategories/Articles
+ * reference it).
  */
 export default function CategoryPanel({
   categories,

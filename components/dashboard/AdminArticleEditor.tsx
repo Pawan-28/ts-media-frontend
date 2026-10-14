@@ -257,8 +257,7 @@ export default function AdminArticleEditor({
     router.refresh();
   }
 
-  // Assign on an already-saved article: save the form first so a changed category/subcategory is
-  // what the backend checks the reporter's category assignment against.
+  // Assign on an already-saved article: save the form first so the reporter is assigned to what is on screen.
   async function saveBeforeAssign(): Promise<{ ok: boolean; slug?: string; error?: string }> {
     const { article: saved, error: persistError } = await persist();
     if (!saved) return { ok: false, error: persistError ?? "Could not save the article before assigning." };

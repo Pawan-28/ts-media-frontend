@@ -474,18 +474,6 @@ export interface PublishingScheduleRow {
   updated_at: string;
 }
 
-/** Mirrors apps.reporters.serializers.ReporterCategoryAssignmentSerializer (Phase E). */
-export interface ReporterCategoryAssignmentRow {
-  id: number;
-  reporter: number;
-  reporter_detail: { id: number; email: string; full_name: string; role: string };
-  category: number;
-  category_name: string;
-  industry_name: string | null;
-  assigned_by_email: string | null;
-  created_at: string;
-}
-
 /** Mirrors apps.ai.serializers.AdminAIAnalysisResultSerializer (Phase G, read-only/advisory). */
 export interface AdminAIAnalysisResultRow extends AIAnalysisResult {
   article_id: number;

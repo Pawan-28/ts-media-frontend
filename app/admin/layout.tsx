@@ -49,7 +49,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           title: "Reporters",
           links: [
             { href: "/admin/reporters/reviews", label: "Article Reviews", icon: "clipboardCheck" },
-            { href: "/admin/reporters/assignments", label: "Reporter Category Assignments", icon: "badgeCheck" },
           ],
         },
         {

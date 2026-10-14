@@ -28,7 +28,6 @@ import type {
   PopularArticle,
   PublishingActivity,
   PublishingScheduleRow,
-  ReporterCategoryAssignmentRow,
   Subcategory,
   Tag,
   TaxonomyPerformanceRow,
@@ -267,18 +266,6 @@ export async function listSchedulesAdmin(status?: string): Promise<PublishingSch
   const qs = status ? `?status=${encodeURIComponent(status)}` : "";
   const data = await fetchAdminJson<PublishingScheduleRow[] | PaginatedResponse<PublishingScheduleRow>>(
     `/api/admin/schedules${qs}`,
-    []
-  );
-  return Array.isArray(data) ? data : data.results;
-}
-
-// ---------------------------------------------------------------------------
-// Phase E: Reporter Category Assignments
-// ---------------------------------------------------------------------------
-
-export async function listAssignmentsAdmin(): Promise<ReporterCategoryAssignmentRow[]> {
-  const data = await fetchAdminJson<ReporterCategoryAssignmentRow[] | PaginatedResponse<ReporterCategoryAssignmentRow>>(
-    `/api/admin/reporters/assignments`,
     []
   );
   return Array.isArray(data) ? data : data.results;

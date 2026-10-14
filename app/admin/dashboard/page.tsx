@@ -342,7 +342,6 @@ export default async function AdminDashboardPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <QuickActionCard label="Review Submissions" description="Articles awaiting your decision" href="/admin/reporters/reviews" />
           <QuickActionCard label="All Articles" description="Every article, any status" href="/admin/articles" />
-          <QuickActionCard label="Manage Reporters" description="Category assignments" href="/admin/reporters/assignments" />
           <QuickActionCard label="Manage Taxonomy" description="Industries, categories, subcategories" href="/admin/categories" />
         </div>
       </DashboardSection>

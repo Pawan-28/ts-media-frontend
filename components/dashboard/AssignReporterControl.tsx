@@ -16,10 +16,11 @@ const ASSIGNABLE_STATUSES = ["DRAFT", "SUBMITTED", "UNDER_REVIEW"];
 /**
  * Editorial Workflow Scenario A - routes an article to a specific
  * Reporter (ArticleWorkflowService.assign_reporter on the backend, which
- * itself re-validates role=REPORTER and the reporter's
- * ReporterCategoryAssignment eligibility for this article's category -
- * this control does not duplicate either check, it just surfaces the
- * backend's own rejection if the pick is invalid).
+ * itself re-validates role=REPORTER, that the account is active and that the
+ * pick is not the article's author - this control does not duplicate those
+ * checks, it just surfaces the backend's own rejection if the pick is
+ * invalid). Any active reporter can be assigned; there are no per-category
+ * assignments any more.
  */
 export default function AssignReporterControl({
   article,
@@ -28,9 +29,7 @@ export default function AssignReporterControl({
   article: Article;
   /**
    * Called right before assigning: the editor passes a function that saves the form's current
-   * (possibly unsaved) values first - e.g. a category changed in the form - so the backend's
-   * "reporter is assigned to this category" check runs against what is on screen, not the
-   * previously saved category.
+   * (possibly unsaved) values first, so the reporter is assigned to the article as it is on screen.
    */
   beforeAssign?: () => Promise<{ ok: boolean; slug?: string; error?: string }>;
 }) {
