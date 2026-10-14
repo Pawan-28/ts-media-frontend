@@ -12,6 +12,8 @@ import { SITE_NAME, SITE_URL, organizationJsonLd, websiteJsonLd } from "@/lib/se
 // CI environments block that fetch. To self-host Inter instead, add the
 // font files under public/fonts and swap font-sans's @font-face in here.
 
+const ADSENSE_CLIENT = "ca-pub-1396209168782274";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -31,6 +33,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Google AdSense. A plain async <script> in the root layout's <head> (not next/script) so the tag is in the
+            server-rendered HTML of every page, where Google's site-verification crawler looks for it. The publisher id
+            is public (it is visible in the page source of every AdSense site). */}
+        <script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="flex min-h-screen flex-col font-sans">
         <a href="#main-content" className="skip-link">
           Skip to content
