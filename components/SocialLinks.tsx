@@ -1,12 +1,22 @@
+import type { ReactNode } from "react";
+
 /**
- * The site's social profiles, shown as round icon buttons in the header
- * strip. Each URL can be overridden per deployment with a NEXT_PUBLIC_SOCIAL_*
- * env var. A network with an empty URL (X, Telegram for now) is hidden until a
- * real link is set here or in the env.
+ * The publication's official social profiles - the single source of truth for the header strip, the footer and
+ * the About / Contact / Advertise pages. Each URL can be overridden per deployment with a NEXT_PUBLIC_SOCIAL_*
+ * env var. A network with an empty URL (X, Telegram for now) is hidden until a real link is set here or in the env.
  */
-const SOCIAL_LINKS = [
+interface SocialLink {
+  label: string;
+  /** Account name shown next to the icon on the Contact / About cards. */
+  handle: string;
+  href: string;
+  icon: ReactNode;
+}
+
+export const SOCIAL_LINKS: SocialLink[] = [
   {
     label: "Facebook",
+    handle: "TS Publication",
     href: process.env.NEXT_PUBLIC_SOCIAL_FACEBOOK || "https://www.facebook.com/p/TS-Publication-61566187917098/",
     icon: (
       <path
@@ -17,11 +27,13 @@ const SOCIAL_LINKS = [
   },
   {
     label: "X",
+    handle: "Truth And Social",
     href: process.env.NEXT_PUBLIC_SOCIAL_X || "",
     icon: <path stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" d="M5 5l14 14M19 5 5 19" fill="none" />,
   },
   {
     label: "Instagram",
+    handle: "@truthandsocialmedia",
     href: process.env.NEXT_PUBLIC_SOCIAL_INSTAGRAM || "https://www.instagram.com/truthandsocialmedia/",
     icon: (
       <>
@@ -33,6 +45,7 @@ const SOCIAL_LINKS = [
   },
   {
     label: "YouTube",
+    handle: "@tspublication",
     href: process.env.NEXT_PUBLIC_SOCIAL_YOUTUBE || "https://www.youtube.com/@tspublication",
     icon: (
       <>
@@ -43,6 +56,7 @@ const SOCIAL_LINKS = [
   },
   {
     label: "LinkedIn",
+    handle: "TS Publication",
     href: process.env.NEXT_PUBLIC_SOCIAL_LINKEDIN || "https://in.linkedin.com/company/ts-publication",
     icon: (
       <>
@@ -57,6 +71,7 @@ const SOCIAL_LINKS = [
   },
   {
     label: "Telegram",
+    handle: "Truth And Social",
     href: process.env.NEXT_PUBLIC_SOCIAL_TELEGRAM || "",
     icon: (
       <path
@@ -67,10 +82,13 @@ const SOCIAL_LINKS = [
   },
 ];
 
+const activeLinks = () => SOCIAL_LINKS.filter((s) => s.href);
+
+/** Row of small round icon buttons (header strip, footer). */
 export default function SocialLinks({ className = "" }: { className?: string }) {
   return (
     <ul className={`flex items-center gap-2 ${className}`} aria-label="Follow us on social media">
-      {SOCIAL_LINKS.filter((s) => s.href).map((s) => (
+      {activeLinks().map((s) => (
         <li key={s.label}>
           <a
             href={s.href}
@@ -83,6 +101,37 @@ export default function SocialLinks({ className = "" }: { className?: string }) 
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
               {s.icon}
             </svg>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Larger cards with the network name and account handle (Contact, About, Advertise pages). */
+export function SocialLinkCards({ className = "" }: { className?: string }) {
+  return (
+    <ul className={`not-prose grid grid-cols-1 gap-3 sm:grid-cols-2 ${className}`} aria-label="Our official social media profiles">
+      {activeLinks().map((s) => (
+        <li key={s.label}>
+          <a
+            href={s.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 rounded-md border border-border-200 bg-surface-0 p-4 transition-colors hover:border-accent-600"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-50 text-text-900">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                {s.icon}
+              </svg>
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-text-900">{s.label}</span>
+              <span className="block truncate text-sm text-text-600">{s.handle}</span>
+            </span>
+            <span aria-hidden="true" className="ml-auto text-text-400">
+              &rarr;
+            </span>
           </a>
         </li>
       ))}
