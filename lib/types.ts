@@ -150,6 +150,8 @@ export interface CurrentUser {
   last_name: string;
   full_name: string;
   phone: string | null;
+  /** Public "About the Author" blurb (reporters/admins only); null when not set. */
+  bio?: string | null;
   role: "ADMIN" | "REPORTER" | "USER" | "SUBSCRIBER";
   is_active: boolean;
   created_at: string;

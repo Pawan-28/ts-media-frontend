@@ -6,6 +6,7 @@ import {
   REFRESH_COOKIE,
   fetchWithAuthRefresh,
 } from "@/lib/auth/session";
+import { reporterProxy } from "@/lib/auth/reporterProxy";
 
 /**
  * GET /api/auth/me - proxies Django's existing GET /api/auth/me/ using the
@@ -45,4 +46,13 @@ export async function GET(request: NextRequest) {
     });
   }
   return response;
+}
+
+/**
+ * PATCH /api/auth/me - the signed-in user edits their own profile (first/last name for everyone, author bio for
+ * reporters and admins). Proxies PATCH /api/auth/me/ on the backend with the cookie token (refreshed if expired);
+ * the backend decides what each role may change.
+ */
+export async function PATCH(request: NextRequest) {
+  return reporterProxy(request, "/auth/me/", "PATCH");
 }

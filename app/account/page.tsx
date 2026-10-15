@@ -5,6 +5,7 @@ import { getCurrentUser, getMySubscription } from "@/lib/auth/currentUser";
 import { formatDate } from "@/lib/format";
 import LogoutButton from "@/components/LogoutButton";
 import PhoneVerifyForm from "@/components/PhoneVerifyForm";
+import ProfileForm from "@/components/ProfileForm";
 
 export const metadata: Metadata = {
   title: "My account",
@@ -31,14 +32,7 @@ export default async function AccountPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="card p-6">
           <h2 className="mb-4 text-lg font-bold text-text-900">Profile</h2>
-          <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-3 text-sm">
-            <dt className="text-text-400">Name</dt>
-            <dd className="text-text-900">{user.full_name}</dd>
-            <dt className="text-text-400">Email</dt>
-            <dd className="break-all text-text-900">{user.email}</dd>
-            <dt className="text-text-400">Role</dt>
-            <dd className="text-text-900">{user.role}</dd>
-          </dl>
+          <ProfileForm user={user} />
         </section>
 
         <section className="card p-6">
